@@ -36,3 +36,5 @@ jobs:
             git commit -m "Actualizar datos de BTC"
             git push
           fi
+
+# Reactivar la programación automática
