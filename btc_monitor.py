@@ -5,29 +5,31 @@ from datetime import datetime, timezone
 
 ARCHIVO = "btc_dominance.csv"
 
-def obtener_datos():
-    # Precio de BTC desde Binance
-    r = requests.get(
-        "https://api.binance.com/api/v3/ticker/price",
-        params={"symbol": "BTCUSDT"},
-        timeout=20
-    )
-    r.raise_for_status()
-    precio = float(r.json()["price"])
 
-    # Dominancia desde CoinGecko
-    r = requests.get(
-        "https://api.coingecko.com/api/v3/global",
-        timeout=20
+def obtener_datos():
+    # Obtener el precio de Bitcoin desde CoinGecko
+    url_precio = "https://api.coingecko.com/api/v3/simple/price"
+    respuesta = requests.get(
+        url_precio,
+        params={"ids": "bitcoin", "vs_currencies": "usd"},
+        timeout=30
     )
-    r.raise_for_status()
-    datos = r.json()["data"]
+    respuesta.raise_for_status()
+    precio = float(respuesta.json()["bitcoin"]["usd"])
+
+    # Obtener la dominancia de Bitcoin desde CoinGecko
+    url_global = "https://api.coingecko.com/api/v3/global"
+    respuesta = requests.get(url_global, timeout=30)
+    respuesta.raise_for_status()
+    datos = respuesta.json()["data"]
     dominancia = float(datos["market_cap_percentage"]["btc"])
 
-    # Hora UTC
-    tiempo = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    tiempo = datetime.now(timezone.utc).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
 
     return tiempo, precio, dominancia
+
 
 def guardar_fila(tiempo, precio, dominancia):
     existe = os.path.exists(ARCHIVO)
@@ -37,10 +39,13 @@ def guardar_fila(tiempo, precio, dominancia):
 
         if not existe or os.path.getsize(ARCHIVO) == 0:
             escritor.writerow([
-                "time", "btc_price_usd", "btc_dominance_pct"
+                "time",
+                "btc_price_usd",
+                "btc_dominance_pct"
             ])
 
         escritor.writerow([tiempo, precio, dominancia])
+
 
 if __name__ == "__main__":
     try:
@@ -48,9 +53,10 @@ if __name__ == "__main__":
         guardar_fila(tiempo, precio, dominancia)
 
         print(
-            f"{tiempo} UTC | BTC: ${precio:,.2f} "
-            f"| Dominancia: {dominancia:.2f}%"
+            f"{tiempo} UTC | BTC: ${precio:,.2f} | "
+            f"Dominancia: {dominancia:.2f}%"
         )
+
     except Exception as e:
         print(f"Error: {e}")
         raise
