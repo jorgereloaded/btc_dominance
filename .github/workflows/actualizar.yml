@@ -20,6 +20,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          
+      - name: Comprobar hora de inicio
+        run: |
+          echo "Evento: ${{ github.event_name }}"
+          echo "Programación: ${{ github.event.schedule }}"
+          echo "Inicio real:"
+          date -u
 
       - name: Instalar dependencias
         run: pip install requests
