@@ -3,7 +3,11 @@ import csv
 import os
 import requests
 from datetime import datetime, timezone
+API_KEY = os.environ["COINGECKO_API_KEY"]
 
+HEADERS = {
+    "x-cg-demo-api-key": API_KEY
+}
 ARCHIVO = "btc_dominance.csv"
 
 COLUMNAS = [
@@ -22,7 +26,10 @@ COLUMNAS = [
 def obtener_datos():
     # 1. Datos generales del mercado cripto
     url_global = "https://api.coingecko.com/api/v3/global"
-    respuesta = requests.get(url_global, timeout=30)
+    respuesta = requests.get(
+    url_global,
+    headers=HEADERS,
+    timeout=30)
     respuesta.raise_for_status()
     global_data = respuesta.json()["data"]
 
@@ -40,6 +47,7 @@ def obtener_datos():
     url_btc = "https://api.coingecko.com/api/v3/simple/price"
     respuesta = requests.get(
         url_btc,
+        headers=HEADERS,
         params={
             "ids": "bitcoin",
             "vs_currencies": "usd",
@@ -59,6 +67,7 @@ def obtener_datos():
     )
     respuesta = requests.get(
         url_stablecoins,
+        headers=HEADERS,
         params={
             "vs_currency": "usd",
             "category": "stablecoins",
