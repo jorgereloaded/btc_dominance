@@ -30,9 +30,11 @@ jobs:
       - name: Instalar dependencias
         run: pip install requests
 
-      - name: Obtener datos de BTC
+        - name: Obtener datos de BTC
+        env:
+          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
         run: python btc_monitor.py
-
+        
       - name: Guardar CSV en el repositorio
         run: |
           git config user.name "github-actions[bot]"
