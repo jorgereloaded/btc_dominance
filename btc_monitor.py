@@ -29,7 +29,8 @@ def obtener_datos():
     respuesta = requests.get(
     url_global,
     headers=HEADERS,
-    timeout=30)
+    timeout=30
+    )
     respuesta.raise_for_status()
     global_data = respuesta.json()["data"]
 
