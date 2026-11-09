@@ -37,23 +37,23 @@ jobs:
 
       - name: Consultar consumo de CoinGecko
         env:
-            COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
         run: |
-            python - <<'PY'
-            import os
-            import requests
+          python - <<'PY'
+          import os
+          import requests
 
-            url = "https://api.coingecko.com/api/v3/key"
-            headers = {
-                "x-cg-demo-api-key": os.environ["COINGECKO_API_KEY"]
-            }
+          url = "https://api.coingecko.com/api/v3/key"
+          headers = {
+            "x-cg-demo-api-key": os.environ["COINGECKO_API_KEY"]
+          }
 
-            respuesta = requests.get(url, headers=headers, timeout=20)
+          respuesta = requests.get(url, headers=headers, timeout=20)
 
-            print("Estado HTTP:", respuesta.status_code)
-            print("Respuesta CoinGecko:")
-            print(respuesta.text)
-            PY
+          print("Estado HTTP:", respuesta.status_code)
+          print("Respuesta CoinGecko:")
+          print(respuesta.text)
+          PY
 
       - name: Guardar CSV en el repositorio
         run: |
