@@ -70,6 +70,8 @@ def obtener_datos():
     )
 
     respuesta.raise_for_status()
+    print("Estado HTTP CoinGecko:", respuesta.status_code)
+    print("Consulta realizada:", url)
     monedas = respuesta.json()
 
     if not monedas:
