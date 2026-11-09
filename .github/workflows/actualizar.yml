@@ -35,10 +35,10 @@ jobs:
           COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
         run: python btc_monitor.py
 
-        - name: Consultar consumo de CoinGecko
-          env:
+      - name: Consultar consumo de CoinGecko
+        env:
             COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
-          run: |
+        run: |
             python - <<'PY'
             import os
             import requests
