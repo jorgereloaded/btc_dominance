@@ -1,7 +1,7 @@
+
 name: Actualizar datos de Bitcoin
 
 on:
-
   workflow_dispatch:
 
 permissions:
@@ -13,14 +13,14 @@ jobs:
 
     steps:
       - name: Descargar archivos del repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Preparar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-          
-      - name: Comprobar hora de inicio 
+
+      - name: Comprobar hora de inicio
         run: |
           echo "Evento: ${{ github.event_name }}"
           echo "Programación: ${{ github.event.schedule }}"
@@ -32,9 +32,9 @@ jobs:
 
       - name: Obtener datos de BTC
         env:
-           COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
         run: python btc_monitor.py
-        
+
       - name: Guardar CSV en el repositorio
         run: |
           git config user.name "github-actions[bot]"
@@ -44,4 +44,3 @@ jobs:
             git commit -m "Actualizar datos de BTC"
             git push
           fi
-
