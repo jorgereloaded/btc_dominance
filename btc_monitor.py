@@ -4,7 +4,7 @@ import os
 import requests
 from datetime import datetime, timezone
 
-API_KEY = os.environ["COINGECKO_API_KEY"]
+API_KEY = os.environ.get["COINGECKO_API_KEY"]
 
 HEADERS = {
     "x-cg-demo-api-key": API_KEY
@@ -68,8 +68,7 @@ def obtener_datos():
         },
         timeout=30
     )
-    print("API KEY enviada:", bool(respuesta.request.headers.get("x-cg-demo-api-key")))
-    print("Longitud de API KEY:", len(respuesta.request.headers.get("x-cg-demo-api-key", "")))
+  
     respuesta.raise_for_status()
     print("Estado HTTP CoinGecko:", respuesta.status_code)
     print("Consulta realizada:", url)
