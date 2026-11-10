@@ -68,7 +68,8 @@ def obtener_datos():
         },
         timeout=30
     )
-
+    print("API KEY enviada:", bool(respuesta.request.headers.get("x-cg-demo-api-key")))
+    print("Longitud de API KEY:", len(respuesta.request.headers.get("x-cg-demo-api-key", "")))
     respuesta.raise_for_status()
     print("Estado HTTP CoinGecko:", respuesta.status_code)
     print("Consulta realizada:", url)
