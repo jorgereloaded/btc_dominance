@@ -6,6 +6,12 @@ from datetime import datetime, timezone
 
 API_KEY = os.environ.get("COINGECKO_API_KEY")
 
+# Validación temporal para depurar en los logs de GitHub Actions
+if not API_KEY:
+    print("¡ALERTA! La variable COINGECKO_API_KEY está vacía o no existe.")
+else:
+    print(f"API Key cargada correctamente. Sus primeros 4 caracteres son: {API_KEY[:4]}...")
+
 HEADERS = {
     "x-cg-demo-api-key": API_KEY
 }
