@@ -4,7 +4,7 @@ import os
 import requests
 from datetime import datetime, timezone
 
-API_KEY = os.environ.get["COINGECKO_API_KEY"]
+API_KEY = os.environ.get("COINGECKO_API_KEY")
 
 HEADERS = {
     "x-cg-demo-api-key": API_KEY
