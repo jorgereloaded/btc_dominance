@@ -7,10 +7,6 @@ on:
 permissions:
   contents: write
 
-# Evitar ejecuciones simultáneas
-concurrency:
-  group: actualizar-datos-bitcoin
-  cancel-in-progress: false
 
 jobs:
   actualizar:
