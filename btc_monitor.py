@@ -6,20 +6,19 @@ from datetime import datetime, timezone
 
 API_KEY = os.environ.get("COINGECKO_API_KEY")
 
-# Validación temporal para depurar en los logs de GitHub Actions
 if not API_KEY:
-    print("¡ALERTA! La variable COINGECKO_API_KEY está vacía o no existe.")
+    print("¡ALERTA! La variable COINGECKO_API_KEY está vacía.")
 else:
-    print(f"API Key cargada correctamente. Sus primeros 4 caracteres son: {API_KEY[:4]}...")
+    print("API Key de CoinGecko cargada correctamente.")
 
 HEADERS = {
     "x-cg-demo-api-key": API_KEY
-}
+} if API_KEY else {}
 
 ARCHIVO = "btc_dominance.csv"
 HISTORICO = "btc_dominance_historico.csv"
 
-COLUMNAS = [
+COLUMNAS_ANTERIORES = [
     "numero_fila",
     "fecha",
     "btc_price_usd",
@@ -32,7 +31,11 @@ COLUMNAS = [
     "total_volume_26_usd"
 ]
 
-# Identificadores de CoinGecko de stablecoins conocidas.
+COLUMNAS = COLUMNAS_ANTERIORES + [
+    "btc_open_interest_usd",
+    "btc_funding_rate"
+]
+
 STABLECOINS_IDS = {
     "tether",
     "usd-coin",
@@ -57,6 +60,64 @@ STABLECOINS_IDS = {
 }
 
 
+def obtener_derivados():
+
+    open_interest = None
+    funding_rate = None
+
+    # Open Interest de BTCUSDT
+    try:
+        url_oi = "https://fapi.binance.com/futures/data/openInterestHist"
+
+        respuesta_oi = requests.get(
+            url_oi,
+            params={
+                "symbol": "BTCUSDT",
+                "period": "5m",
+                "limit": 1
+            },
+            timeout=20
+        )
+
+        respuesta_oi.raise_for_status()
+        registros = respuesta_oi.json()
+
+        if registros:
+            open_interest = float(
+                registros[-1]["sumOpenInterestValue"]
+            )
+            print("Open Interest de Binance obtenido.")
+        else:
+            print("Binance no devolvió Open Interest.")
+
+    except Exception as e:
+        print("AVISO: Error al obtener Open Interest:", e)
+
+    # Funding Rate de BTCUSDT
+    try:
+        url_funding = "https://fapi.binance.com/fapi/v1/premiumIndex"
+
+        respuesta_funding = requests.get(
+            url_funding,
+            params={"symbol": "BTCUSDT"},
+            timeout=20
+        )
+
+        respuesta_funding.raise_for_status()
+        datos_funding = respuesta_funding.json()
+
+        funding_rate = float(
+            datos_funding["lastFundingRate"]
+        )
+
+        print("Funding Rate de Binance obtenido.")
+
+    except Exception as e:
+        print("AVISO: Error al obtener Funding Rate:", e)
+
+    return [open_interest, funding_rate]
+
+
 def obtener_datos():
 
     # UNA SOLA CONSULTA: las 250 criptomonedas principales
@@ -74,10 +135,9 @@ def obtener_datos():
         },
         timeout=30
     )
-  
+
     respuesta.raise_for_status()
     print("Estado HTTP CoinGecko:", respuesta.status_code)
-    print("Consulta realizada:", url)
     monedas = respuesta.json()
 
     if not monedas:
@@ -109,11 +169,9 @@ def obtener_datos():
     )[:5]
 
     if len(stablecoins) < 5:
-        raise ValueError(
-            "No se encontraron cinco stablecoins."
-        )
+        raise ValueError("No se encontraron cinco stablecoins.")
 
-    # Veinte altcoins principales, excluyendo BTC y stablecoins
+    # Veinte altcoins principales
     altcoins = [
         m for m in monedas
         if m["id"] != "bitcoin"
@@ -133,7 +191,6 @@ def obtener_datos():
         float(m["market_cap"]) for m in altcoins
     )
 
-    # Mercado propio: BTC + 5 stablecoins + 20 altcoins
     capitalizacion_total = (
         capitalizacion_btc
         + capitalizacion_stablecoins
@@ -162,6 +219,9 @@ def obtener_datos():
         "%Y-%m-%d %H:%M:%S"
     )
 
+    # Obtener los dos indicadores de Binance
+    derivados = obtener_derivados()
+
     return [
         fecha,
         precio_btc,
@@ -172,36 +232,53 @@ def obtener_datos():
         dominancia_btc,
         dominancia_stablecoins,
         volumen_total
-    ]
+    ] + derivados
 
 
 def preparar_csv():
 
-    # Si existe el CSV anterior, conservarlo como histórico.
     if os.path.exists(ARCHIVO):
 
         with open(
             ARCHIVO, "r", newline="", encoding="utf-8"
         ) as f:
-            encabezado = next(csv.reader(f), [])
+            lector = csv.reader(f)
+            encabezado = next(lector, [])
+            filas = list(lector)
 
-        if encabezado != COLUMNAS:
+        if encabezado == COLUMNAS:
+            return
 
-            if os.path.exists(HISTORICO):
-                raise ValueError(
-                    "Ya existe el archivo histórico. "
-                    "No se modificó ningún CSV."
-                )
+        if encabezado == COLUMNAS_ANTERIORES:
 
-            os.replace(ARCHIVO, HISTORICO)
+            temporal = ARCHIVO + ".tmp"
 
-    # Crear el nuevo CSV
-    if not os.path.exists(ARCHIVO):
-        with open(
-            ARCHIVO, "w", newline="", encoding="utf-8"
-        ) as f:
-            escritor = csv.writer(f)
-            escritor.writerow(COLUMNAS)
+            with open(
+                temporal, "w", newline="", encoding="utf-8"
+            ) as f:
+                escritor = csv.writer(f)
+                escritor.writerow(COLUMNAS)
+
+                for fila in filas:
+                    escritor.writerow(fila + ["", ""])
+
+            os.replace(temporal, ARCHIVO)
+
+            print(
+                "CSV ampliado conservando todos los registros anteriores."
+            )
+            return
+
+        raise ValueError(
+            "El encabezado del CSV no coincide. "
+            "No se modificó ningún archivo."
+        )
+
+    with open(
+        ARCHIVO, "w", newline="", encoding="utf-8"
+    ) as f:
+        escritor = csv.writer(f)
+        escritor.writerow(COLUMNAS)
 
 
 def guardar_fila(datos):
@@ -241,7 +318,9 @@ if __name__ == "__main__":
             f"BTC: ${datos[1]:,.2f} | "
             f"Capitalización propia: ${datos[5]:,.0f} | "
             f"Dominancia BTC: {datos[6]:.2f}% | "
-            f"Stablecoins: {datos[7]:.2f}%"
+            f"Stablecoins: {datos[7]:.2f}% | "
+            f"Open Interest: {datos[9]} | "
+            f"Funding Rate: {datos[10]}"
         )
 
     except Exception as e:
