@@ -115,6 +115,16 @@ def obtener_derivados():
 
         registros_oi = respuesta_oi.json()
 
+        print("\n--- OPEN INTEREST POR EXCHANGE ---")
+
+        for simbolo in SIMBOLOS_COINALYZE:
+            if simbolo in {
+                r.get("symbol") for r in registros_oi
+            }:
+                print(simbolo, "| OK")
+            else:
+                print(simbolo, "| SIN DATOS")
+                
         for registro in registros_oi:
             simbolo = registro.get("symbol")
             valor = registro.get("value")
