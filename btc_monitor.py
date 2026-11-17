@@ -72,11 +72,9 @@ STABLECOINS_IDS = {
 # Siete contratos perpetuos de BTC seleccionados
 SIMBOLOS_COINALYZE = [
     "BTCUSDT_PERP.A",  # Binance
-    "BTCUSDT_PERP.6",  # Bybit
     "BTCUSDT_PERP.3",  # OKX
     "BTC-PERPETUAL.2", # Deribit
     "BTC.H",           # Hyperliquid
-    "BTC_USDT.Y",      # Gate.io
     "pf_xbtusd.K"      # Kraken
 ]
 
