@@ -167,7 +167,17 @@ def obtener_derivados():
         respuesta_funding.raise_for_status()
 
         registros_funding = respuesta_funding.json()
+        
+        print("\n--- FUNDING RATE POR EXCHANGE ---")
 
+        for simbolo in SIMBOLOS_COINALYZE:
+            if simbolo in {
+                r.get("symbol") for r in registros_funding
+            }:
+                print(simbolo, "| OK")
+            else:
+                print(simbolo, "| SIN DATOS")
+        
         suma_ponderada = 0.0
         suma_open_interest = 0.0
         exchanges_ponderados = 0
