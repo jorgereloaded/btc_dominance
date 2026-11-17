@@ -5,15 +5,25 @@ import requests
 from datetime import datetime, timezone
 
 API_KEY = os.environ.get("COINGECKO_API_KEY")
+COINALYZE_API_KEY = os.environ.get("COINALYZE_API_KEY")
 
 if not API_KEY:
     print("¡ALERTA! La variable COINGECKO_API_KEY está vacía.")
 else:
     print("API Key de CoinGecko cargada correctamente.")
 
+if not COINALYZE_API_KEY:
+    print("¡ALERTA! La variable COINALYZE_API_KEY está vacía.")
+else:
+    print("API Key de Coinalyze cargada correctamente.")
+
 HEADERS = {
     "x-cg-demo-api-key": API_KEY
 } if API_KEY else {}
+
+COINALYZE_HEADERS = {
+    "api_key": COINALYZE_API_KEY
+} if COINALYZE_API_KEY else {}
 
 ARCHIVO = "btc_dominance.csv"
 HISTORICO = "btc_dominance_historico.csv"
@@ -59,63 +69,141 @@ STABLECOINS_IDS = {
     "euro-coin"
 }
 
+# Siete contratos perpetuos de BTC seleccionados
+SIMBOLOS_COINALYZE = [
+    "BTCUSDT_PERP.A",  # Binance
+    "BTCUSDT_PERP.6",  # Bybit
+    "BTCUSDT_PERP.3",  # OKX
+    "BTC-PERPETUAL.2", # Deribit
+    "BTC.H",           # Hyperliquid
+    "BTC_USDT.Y",      # Gate.io
+    "pf_xbtusd.K"      # Kraken
+]
+
 
 def obtener_derivados():
 
-    open_interest = None
-    funding_rate = None
+    open_interest_total = None
+    funding_rate_ponderado = None
 
-    # Open Interest de BTCUSDT
+    if not COINALYZE_API_KEY:
+        print("No se pueden consultar derivados: falta la API Key.")
+        return [None, None]
+
+    simbolos = ",".join(SIMBOLOS_COINALYZE)
+
+    # Open Interest de los siete exchanges, convertido a USD
+    datos_oi = {}
+
     try:
-        url_oi = "https://fapi.binance.com/futures/data/openInterestHist"
+        url_oi = "https://api.coinalyze.net/v1/open-interest"
 
         respuesta_oi = requests.get(
             url_oi,
+            headers=COINALYZE_HEADERS,
             params={
-                "symbol": "BTCUSDT",
-                "period": "5m",
-                "limit": 1
+                "symbols": simbolos,
+                "convert_to_usd": "true"
             },
-            timeout=20
+            timeout=30
         )
 
-        respuesta_oi.raise_for_status()
-        registros = respuesta_oi.json()
+        print("Estado HTTP Coinalyze Open Interest:",
+              respuesta_oi.status_code)
 
-        if registros:
-            open_interest = float(
-                registros[-1]["sumOpenInterestValue"]
+        respuesta_oi.raise_for_status()
+
+        registros_oi = respuesta_oi.json()
+
+        for registro in registros_oi:
+            simbolo = registro.get("symbol")
+            valor = registro.get("value")
+
+            if simbolo and valor is not None:
+                datos_oi[simbolo] = float(valor)
+
+        if datos_oi:
+            open_interest_total = sum(datos_oi.values())
+
+            print(
+                "Open Interest obtenido:",
+                len(datos_oi),
+                "de",
+                len(SIMBOLOS_COINALYZE),
+                "exchanges."
             )
-            print("Open Interest de Binance obtenido.")
         else:
-            print("Binance no devolvió Open Interest.")
+            print("Coinalyze no devolvió valores de Open Interest.")
 
     except Exception as e:
         print("AVISO: Error al obtener Open Interest:", e)
 
-    # Funding Rate de BTCUSDT
+    # Funding Rate actual de los siete exchanges
     try:
-        url_funding = "https://fapi.binance.com/fapi/v1/premiumIndex"
+        url_funding = "https://api.coinalyze.net/v1/funding-rate"
 
         respuesta_funding = requests.get(
             url_funding,
-            params={"symbol": "BTCUSDT"},
-            timeout=20
+            headers=COINALYZE_HEADERS,
+            params={
+                "symbols": simbolos
+            },
+            timeout=30
         )
+
+        print("Estado HTTP Coinalyze Funding Rate:",
+              respuesta_funding.status_code)
 
         respuesta_funding.raise_for_status()
-        datos_funding = respuesta_funding.json()
 
-        funding_rate = float(
-            datos_funding["lastFundingRate"]
-        )
+        registros_funding = respuesta_funding.json()
 
-        print("Funding Rate de Binance obtenido.")
+        suma_ponderada = 0.0
+        suma_open_interest = 0.0
+        exchanges_ponderados = 0
+
+        for registro in registros_funding:
+
+            simbolo = registro.get("symbol")
+            funding = registro.get("value")
+
+            # Solo ponderamos cuando tenemos ambos datos
+            if (
+                simbolo in datos_oi
+                and funding is not None
+                and datos_oi[simbolo] > 0
+            ):
+                oi = datos_oi[simbolo]
+                funding = float(funding)
+
+                suma_ponderada += funding * oi
+                suma_open_interest += oi
+                exchanges_ponderados += 1
+
+        if suma_open_interest > 0:
+
+            funding_rate_ponderado = (
+                suma_ponderada / suma_open_interest
+            )
+
+            print(
+                "Funding Rate ponderado obtenido:",
+                exchanges_ponderados,
+                "exchanges."
+            )
+
+        else:
+            print(
+                "No se pudo calcular el Funding Rate ponderado."
+            )
 
     except Exception as e:
         print("AVISO: Error al obtener Funding Rate:", e)
 
-    return [open_interest, funding_rate]
+    return [
+        open_interest_total,
+        funding_rate_ponderado
+    ]
 
 
 def obtener_datos():
@@ -219,7 +307,7 @@ def obtener_datos():
         "%Y-%m-%d %H:%M:%S"
     )
 
-    # Obtener los dos indicadores de Binance
+    # Obtener Open Interest y Funding Rate de Coinalyze
     derivados = obtener_derivados()
 
     return [
