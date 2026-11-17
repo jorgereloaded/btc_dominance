@@ -1,35 +1,3 @@
-
-name: Actualizar datos de Bitcoin
-
-on:
-  workflow_dispatch:
-
-permissions:
-  contents: write
-
-jobs:
-  actualizar:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Descargar archivos del repositorio
-        uses: actions/checkout@v5
-
-      - name: Preparar Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Comprobar hora de inicio
-        run: |
-          echo "Evento: ${{ github.event_name }}"
-          echo "Programación: ${{ github.event.schedule }}"
-          echo "Inicio real:"
-          date -u
-
-      - name: Instalar dependencias
-        run: pip install requests
-
       - name: Identificar contratos BTC en Coinalyze
         env:
           COINALYZE_API_KEY: ${{ secrets.COINALYZE_API_KEY }}
@@ -38,13 +6,11 @@ jobs:
           import os
           import requests
 
-          url = "https://api.coinalyze.net/v1/future-markets"
+          headers = {"api_key": os.environ["COINALYZE_API_KEY"]}
 
-          respuesta = requests.get(
-              url,
-              headers={"api_key": os.environ["COINALYZE_API_KEY"]},
-              timeout=30
-          )
+          # Obtener contratos perpetuos de BTC
+          url = "https://api.coinalyze.net/v1/future-markets"
+          respuesta = requests.get(url, headers=headers, timeout=30)
 
           print("Estado HTTP Coinalyze:", respuesta.status_code)
           respuesta.raise_for_status()
@@ -68,24 +34,19 @@ jobs:
                   "|", m.get("quote_asset"),
                   "|", m.get("margined")
               )
+
+          # Obtener nombres de los exchanges
+          print("\n--- NOMBRES DE LOS EXCHANGES ---")
+
+          url = "https://api.coinalyze.net/v1/exchanges"
+          respuesta = requests.get(url, headers=headers, timeout=30)
+
+          print("Estado HTTP exchanges:", respuesta.status_code)
+          respuesta.raise_for_status()
+
+          for exchange in respuesta.json():
+              print(
+                  exchange.get("code"),
+                  "|", exchange.get("name")
+              )
           PY
-
-      - name: Obtener datos de BTC
-        env:
-          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
-        run: python btc_monitor.py
-
-      - name: Guardar CSV en el repositorio
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add btc_dominance.csv btc_dominance_historico.csv
-
-          if ! git diff --cached --quiet; then
-            git commit -m "Actualizar datos de BTC"
-
-            git pull --rebase origin main
-
-            git push
-          fi
