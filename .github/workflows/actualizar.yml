@@ -7,7 +7,6 @@ on:
 permissions:
   contents: write
 
-
 jobs:
   actualizar:
     runs-on: ubuntu-latest
@@ -30,6 +29,46 @@ jobs:
 
       - name: Instalar dependencias
         run: pip install requests
+
+      - name: Identificar contratos BTC en Coinalyze
+        env:
+          COINALYZE_API_KEY: ${{ secrets.COINALYZE_API_KEY }}
+        run: |
+          python - <<'PY'
+          import os
+          import requests
+
+          url = "https://api.coinalyze.net/v1/future-markets"
+
+          respuesta = requests.get(
+              url,
+              headers={"api_key": os.environ["COINALYZE_API_KEY"]},
+              timeout=30
+          )
+
+          print("Estado HTTP Coinalyze:", respuesta.status_code)
+          respuesta.raise_for_status()
+
+          mercados = respuesta.json()
+
+          btc = [
+              m for m in mercados
+              if m.get("base_asset") == "BTC"
+              and m.get("is_perpetual") is True
+          ]
+
+          btc.sort(key=lambda m: m.get("exchange", ""))
+
+          print("Contratos perpetuos BTC encontrados:", len(btc))
+
+          for m in btc:
+              print(
+                  m.get("exchange"),
+                  "|", m.get("symbol"),
+                  "|", m.get("quote_asset"),
+                  "|", m.get("margined")
+              )
+          PY
 
       - name: Obtener datos de BTC
         env:
